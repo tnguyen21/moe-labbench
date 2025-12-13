@@ -36,4 +36,6 @@ Notes:
 uv run python train.py --data_dir data/fineweb_small
 ```
 
+## Credits
+
 credits to [1a3orn's](https://github.com/1a3orn/very-simple-moe) and [wolfecameron's](https://github.com/wolfecameron/nanoMoE) implementations which I used as reference
