@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from dataclasses import asdict, dataclass
@@ -41,11 +42,36 @@ def _open_append(path: str):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     return open(path, "ab")
 
+
 def _count_tokens(path: str, dtype: np.dtype) -> int:
     if not os.path.exists(path):
         return 0
     size = os.path.getsize(path)
     return int(size // dtype.itemsize)
+
+
+def _is_val_example(ex: dict, text: str, val_fraction: float, seed: int) -> bool:
+    if val_fraction <= 0.0:
+        return False
+    if val_fraction >= 1.0:
+        return True
+
+    # Prefer stable per-document identifiers when available; fall back to text.
+    key = None
+    for field in ("id", "document_id", "doc_id", "url"):
+        if field in ex:
+            key = ex[field]
+            break
+    if key is None:
+        key = text
+
+    h = hashlib.blake2b(digest_size=8)
+    h.update(str(seed).encode("utf-8"))
+    h.update(b"\0")
+    h.update(str(key).encode("utf-8", errors="ignore"))
+    bucket = int.from_bytes(h.digest(), "big")
+    threshold = int(val_fraction * (1 << 64))
+    return bucket < threshold
 
 
 def main():
@@ -72,8 +98,6 @@ def main():
         help="Recompute token counts from existing .bin files and rewrite meta.json (no dataset download).",
     )
     args = ap.parse_args()
-
-    np.random.seed(args.seed)
 
     tok = GPT2Tokenizer()
 
@@ -137,14 +161,10 @@ def main():
     if not (0.0 <= args.val_fraction <= 1.0):
         raise SystemExit("--val_fraction must be in [0, 1]")
 
-    # Deterministic doc-level split to avoid an accidentally empty val set on small runs.
-    # This is approximate when 1/val_fraction is not an integer.
-    if args.val_fraction == 0.0:
-        val_mod = None
-    elif args.val_fraction == 1.0:
-        val_mod = 1
-    else:
-        val_mod = max(1, int(round(1.0 / args.val_fraction)))
+    # Guardrail: require enough documents for a meaningful val set.
+    MIN_NUM_DOCS = 2_000
+    if args.num_docs < MIN_NUM_DOCS:
+        raise SystemExit(f"--num_docs must be >= {MIN_NUM_DOCS} (got {args.num_docs}). Increase --num_docs.")
 
     train_tokens = 0
     val_tokens = 0
@@ -160,7 +180,7 @@ def main():
                 continue
 
             arr = np.asarray(ids, dtype=dtype)
-            is_val = val_mod is not None and (doc_idx % val_mod == 0)
+            is_val = _is_val_example(ex, text, args.val_fraction, args.seed)
             if is_val:
                 f_val.write(arr.tobytes())
                 val_tokens += int(arr.size)
