@@ -8,6 +8,7 @@ dependencies = [
   "tiktoken>=0.7",
   "torch>=2.2",
   "tqdm>=4.66",
+  "wandb",
 ]
 
 [tool.ruff]

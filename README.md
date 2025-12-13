@@ -36,6 +36,8 @@ Notes:
 uv run python train.py --data_dir data/fineweb_small
 ```
 
+- By default this logs metrics to offline Weights & Biases runs under `out/wandb/` (disable with `--no-wandb`).
+
 ## Credits
 
 credits to [1a3orn's](https://github.com/1a3orn/very-simple-moe) and [wolfecameron's](https://github.com/wolfecameron/nanoMoE) implementations which I used as reference
