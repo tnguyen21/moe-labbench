@@ -101,7 +101,12 @@ def main():
     optim = model.configure_optim(weight_decay=args.weight_decay, learning_rate=args.learning_rate)
 
     os.makedirs(args.out_dir, exist_ok=True)
-    scaler = torch.amp.GradScaler(enabled=args.amp and args.device.startswith("cuda"))
+    device_type = "cuda" if args.device.startswith("cuda") else "cpu"
+    amp_enabled = bool(args.amp and device_type == "cuda")
+    try:
+        scaler = torch.amp.GradScaler(device_type=device_type, enabled=amp_enabled)
+    except TypeError:
+        scaler = torch.amp.GradScaler(enabled=amp_enabled)
 
     t0 = time.time()
     best_val = math.inf
@@ -127,7 +132,7 @@ def main():
 
         x, y = get_batch(train_data, args.batch_size, args.block_size, args.device)
 
-        with torch.amp.autocast(enabled=scaler.is_enabled()):
+        with torch.amp.autocast(device_type=device_type, enabled=amp_enabled):
             _, loss, aux = model(x, y)
             total = loss + (cfg.moe_aux_loss_weight * aux if cfg.use_moe else 0.0)
 
