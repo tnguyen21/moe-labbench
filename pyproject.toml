@@ -1,7 +1,7 @@
 [project]
 name = "moe-labbench"
 version = "0.0.0"
-requires-python = ">=3.12"
+requires-python = ">=3.12, <3.13"
 dependencies = [
   "datasets>=2.19",
   "numpy>=1.24",
