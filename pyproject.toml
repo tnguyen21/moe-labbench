@@ -1,0 +1,15 @@
+[project]
+name = "moe-labbench"
+version = "0.0.0"
+requires-python = ">=3.12"
+dependencies = [
+  "datasets>=2.19",
+  "numpy>=1.24",
+  "tiktoken>=0.7",
+  "torch>=2.2",
+  "tqdm>=4.66",
+]
+
+[tool.ruff]
+line-length = 144
+indent-width = 4
