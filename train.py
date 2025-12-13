@@ -103,10 +103,7 @@ def main():
     os.makedirs(args.out_dir, exist_ok=True)
     device_type = "cuda" if args.device.startswith("cuda") else "cpu"
     amp_enabled = bool(args.amp and device_type == "cuda")
-    try:
-        scaler = torch.amp.GradScaler(device_type=device_type, enabled=amp_enabled)
-    except TypeError:
-        scaler = torch.amp.GradScaler(enabled=amp_enabled)
+    scaler = torch.amp.GradScaler(device_type=device_type, enabled=amp_enabled)
 
     t0 = time.time()
     best_val = math.inf
