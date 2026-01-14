@@ -8,6 +8,7 @@ import os
 import time
 
 import numpy as np
+import tiktoken
 import torch
 
 from model import GPT, ModelConfig
@@ -147,6 +148,16 @@ def main():
             t0 = time.time()
             ms_per_iter = dt * 1000 / 50
             print(f"iter {it} | loss {loss.item():.4f} | aux {aux.item():.4f} | {ms_per_iter:.1f} ms/iter")
+
+    # Generate sample text
+    model.eval()
+    enc = tiktoken.get_encoding("gpt2")
+    prompt = "Hello, my name is"
+    ids = enc.encode(prompt)
+    x = torch.tensor(ids, dtype=torch.long, device=args.device).unsqueeze(0)
+    with torch.no_grad():
+        out = model.generate(x, max_new_tokens=50, temperature=0.8, top_k=40)
+    print(f"\n--- Sample generation ---\n{enc.decode(out[0].tolist())}")
 
 
 if __name__ == "__main__":
