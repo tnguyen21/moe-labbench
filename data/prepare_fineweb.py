@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import gc
 import hashlib
 import json
 import os
@@ -187,6 +188,10 @@ def main():
             else:
                 f_train.write(arr.tobytes())
                 train_tokens += int(arr.size)
+
+    # Clean up streaming iterator to avoid GIL errors on exit.
+    del it, ds
+    gc.collect()
 
     meta = Meta(
         dataset=args.dataset,

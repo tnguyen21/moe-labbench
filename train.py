@@ -124,7 +124,7 @@ def main():
 
     device_type = "cuda" if args.device.startswith("cuda") else "cpu"
     amp_enabled = bool(args.amp and device_type == "cuda")
-    scaler = torch.amp.GradScaler(device_type=device_type, enabled=amp_enabled)
+    scaler = torch.cuda.amp.GradScaler(enabled=amp_enabled)
 
     t0 = time.time()
     best_val = math.inf
