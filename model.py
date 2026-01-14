@@ -109,22 +109,33 @@ class SwitchMoE(nn.Module):
         return y_flat.view(b, t, c), aux_loss
 
 
-class Block(nn.Module):
+class DenseBlock(nn.Module):
     def __init__(self, cfg: ModelConfig):
         super().__init__()
         self.ln1 = nn.LayerNorm(cfg.n_embd)
         self.attn = CausalSelfAttention(cfg)
         self.ln2 = nn.LayerNorm(cfg.n_embd)
-        self.mlp = MLP(cfg) if not cfg.use_moe else SwitchMoE(cfg)
+        self.mlp = MLP(cfg)
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         x = x + self.attn(self.ln1(x))
-        if isinstance(self.mlp, SwitchMoE):
-            y, aux = self.mlp(self.ln2(x))
-            x = x + y
-            return x, aux
         x = x + self.mlp(self.ln2(x))
         return x, x.new_zeros(())
+
+
+class MoEBlock(nn.Module):
+    def __init__(self, cfg: ModelConfig):
+        super().__init__()
+        self.ln1 = nn.LayerNorm(cfg.n_embd)
+        self.attn = CausalSelfAttention(cfg)
+        self.ln2 = nn.LayerNorm(cfg.n_embd)
+        self.moe = SwitchMoE(cfg)
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        x = x + self.attn(self.ln1(x))
+        y, aux = self.moe(self.ln2(x))
+        x = x + y
+        return x, aux
 
 
 class GPT(nn.Module):
@@ -135,7 +146,8 @@ class GPT(nn.Module):
         self.wte = nn.Embedding(cfg.vocab_size, cfg.n_embd)
         self.wpe = nn.Embedding(cfg.block_size, cfg.n_embd)
         self.drop = nn.Dropout(cfg.dropout)
-        self.blocks = nn.ModuleList([Block(cfg) for _ in range(cfg.n_layer)])
+        block_cls = MoEBlock if cfg.use_moe else DenseBlock
+        self.blocks = nn.ModuleList([block_cls(cfg) for _ in range(cfg.n_layer)])
         self.ln_f = nn.LayerNorm(cfg.n_embd)
         self.lm_head = nn.Linear(cfg.n_embd, cfg.vocab_size, bias=False)
 
