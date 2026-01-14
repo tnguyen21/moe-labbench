@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import gc
 import hashlib
 import json
 import os
@@ -189,10 +188,6 @@ def main():
                 f_train.write(arr.tobytes())
                 train_tokens += int(arr.size)
 
-    # Clean up streaming iterator to avoid GIL errors on exit.
-    del it, ds
-    gc.collect()
-
     meta = Meta(
         dataset=args.dataset,
         name=args.name or None,
@@ -213,6 +208,9 @@ def main():
     print(f"Wrote {train_path} ({train_tokens} tokens)")
     print(f"Wrote {val_path} ({val_tokens} tokens)")
     print(f"Wrote {meta_path}")
+
+    # Force exit to avoid GIL errors from lingering HuggingFace HTTP threads.
+    os._exit(0)
 
 
 if __name__ == "__main__":
